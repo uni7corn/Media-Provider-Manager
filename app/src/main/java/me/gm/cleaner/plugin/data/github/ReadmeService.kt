@@ -17,14 +17,14 @@
 package me.gm.cleaner.plugin.data.github
 
 import android.content.Context
-import me.gm.cleaner.plugin.ktx.hasWifiTransport
+import com.google.common.net.HttpHeaders
 import okhttp3.Cache
 import okhttp3.OkHttpClient
 import retrofit2.Call
 import retrofit2.Retrofit
 import retrofit2.converter.scalars.ScalarsConverterFactory
 import retrofit2.http.GET
-import java.io.File
+import java.time.Duration
 
 interface ReadmeService {
     @get:GET("README.md")
@@ -41,19 +41,14 @@ interface ReadmeService {
             val client = OkHttpClient.Builder()
                 .addInterceptor { chain ->
                     val originalResponse = chain.proceed(chain.request())
-                    if (context.hasWifiTransport) {
-                        val maxAge = 60 * 60 * 24 * 7 // read from cache for 1 week
-                        originalResponse.newBuilder()
-                            .header("Cache-Control", "public, max-age=$maxAge")
-                            .build()
-                    } else {
-                        val maxStale = 60 * 60 * 24 * 28 // tolerate 4-weeks stale
-                        originalResponse.newBuilder()
-                            .header("Cache-Control", "public, only-if-cached, max-stale=$maxStale")
-                            .build()
-                    }
+                    originalResponse.newBuilder()
+                        .header(
+                            HttpHeaders.CACHE_CONTROL,
+                            "max-stale=${Duration.ofDays(7).toSeconds()}"
+                        )
+                        .build()
                 }
-                .cache(Cache(File(context.cacheDir, "okhttp"), 1024L * 1024L))
+                .cache(Cache(context.cacheDir, Long.MAX_VALUE))
                 .build()
 
             return Retrofit.Builder()
